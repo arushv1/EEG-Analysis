@@ -18,16 +18,17 @@ def train():
 
     model = EEG_CNN(output_shape=Config.OUTPUT_SHAPE, input_shape=Config.INPUT_SHAPE, hidden_units=Config.HIDDEN_UNITS).to(Config.DEVICE)
     
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
 
     for epoch in range(Config.EPOCHS):
+        ## Training
         model.train()
         train_loss, train_acc = 0, 0
         for batch, (X_batch, y_batch) in enumerate(train_loader):
             X_batch, y_batch = X_batch.to(Config.DEVICE), y_batch.to(Config.DEVICE)
-            y_pred_logits = model(X_batch)
-            y_pred = torch.softmax(y_pred_logits, dim=1).argmax(dim=1)
+            y_pred_logits = model(X_batch).squeeze()
+            y_pred = torch.round(torch.sigmoid(y_pred_logits))
             
             loss = loss_fn(y_pred_logits, y_batch)
             train_loss += loss.item()
@@ -41,11 +42,38 @@ def train():
 
         train_loss /= len(train_loader)
         train_acc /= len(train_loader)
+
+        ## Testing
+        test_loss, test_acc = 0, 0
+        model.eval()
+        with torch.inference_mode():
+            for X_batch, y_batch in test_loader:
+                X_batch, y_batch = X_batch.to(Config.DEVICE), y_batch.to(Config.DEVICE)
+                # 1. Forward pass
+                test_pred_logits = model(X_batch).squeeze()
+                test_pred = torch.round(torch.sigmoid(test_pred_logits))
+                # 2. Calculate loss (accumulatively)
+                test_loss += loss_fn(test_pred, y_batch) # accumulatively add up the loss per epoch
+
+                # 3. Calculate accuracy (preds need to be same as y_true)
+                test_acc += accuracy_fn(y_true=y_batch, y_pred=test_pred)
+
+            # Calculations on test metrics need to happen inside torch.inference_mode()
+            # Divide total test loss by length of test dataloader (per batch)
+            test_loss /= len(test_loader)
+
+            # Divide total accuracy by length of test dataloader (per batch)
+            test_acc /= len(test_loader)
+
+        ## Print out what's happening
         print(f"Epoch {epoch+1}")
-        print(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
+        print(f"\nTrain loss: {train_loss:.5f} Train acc: {train_acc:.5f} | Test loss: {test_loss:.5f} Test acc: {test_acc:.2f}%\n")
 
 
     torch.save(model.state_dict(), Config.MODEL_SAVE_PATH)
     print("Model saved.")
 
-train()
+
+if __name__ == "__main__":
+    train()
+    print("Training completed successfully.")

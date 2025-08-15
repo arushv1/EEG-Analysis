@@ -13,5 +13,5 @@ class Config:
     MODEL_SAVE_PATH = os.path.join('experiments', 'checkpoints', "model.pth")
     DEVICE = 'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu'
     INPUT_SHAPE = 178
-    OUTPUT_SHAPE = 5
+    OUTPUT_SHAPE = 1
     HIDDEN_UNITS = 64

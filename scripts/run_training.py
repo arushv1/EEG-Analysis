@@ -1,8 +1,9 @@
 from src.components.data_ingestion import CSVDataIngestion
 from src.training.training import train
-from src.evaluation.evaluate import evaluate
+from src.evaluation.evaluate import evaluate_model
 
 if __name__ == "__main__":
-    CSVDataIngestion.run()
+    obj = CSVDataIngestion()
+    obj.load_and_split_data()
     train()
-    evaluate()
+    evaluate_model()
